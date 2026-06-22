@@ -340,6 +340,7 @@ def sample_and_apply(no_of_trans=1,
     start_grids = [grid[:] for grid in grids]  # Deep copy of the grids to preserve original state
 
     transformation_details = []
+    all_trans_dicts =[]                    
     continue_prob = 0.3
     whether_to_continue = 1
     
@@ -663,9 +664,11 @@ def sample_and_apply(no_of_trans=1,
             if changed:
                 grids = new_grids
                 transformation_details.append(trans_dict["transformation"])
+                all_trans_dicts.append(trans_dict)
+                
             no_of_skips += 1
 
     if changed:
-        return start_grids, grids, transformation_details
+        return start_grids, grids, transformation_details,all_trans_dicts
     else:
         raise Exception("No change")
