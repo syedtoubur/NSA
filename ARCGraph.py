@@ -100,6 +100,83 @@ class ARCGraph:
         self.task_id = name.split("_")[0]
         self.save_dir = self.img_dir + "/" + self.task_id
 
+    # Add these methods inside the ARCGraph class in ARCGraph.py
+    #Registry From Box coordinates Visual Primitive
+    def register_node_from_box(self, r1: int, c1: int, r2: int, c2: int, node_id: str = "vlm_selected_node"):
+        """
+        Converts a VLM bounding box primitive into an active ARCGraph node
+        by harvesting non-background pixels within the box boundaries.
+        """
+        grid = self.graph_to_grid()
+        node_pixels = []
+        node_colors = []
+        bg_color = self.image.background_color
+
+        # Scan the bounding box area
+        for r in range(max(0, r1), min(self.height, r2 + 1)):
+            for c in range(max(0, c1), min(self.width, c2 + 1)):
+                if grid[r][c] != bg_color:
+                    node_pixels.append((r, c))
+                    node_colors.append(grid[r][c])
+
+        if not node_pixels:
+            raise ValueError(f"No foreground object pixels found inside box [{r1}, {c1}, {r2}, {c2}]")
+
+        # Clear existing node with this ID if it exists, then allocate a new one
+        if self.graph.has_node(node_id):
+            self.graph.remove_node(node_id)
+            
+        self.graph.add_node(
+            node_id, 
+            nodes=node_pixels, 
+            color=node_colors if self.is_multicolor else node_colors[0], 
+            size=len(node_pixels)
+        )
+        return node_id
+    #Registry From Point coordinates Visual Primitive
+    def register_node_from_point(self, r: int, c: int, node_id: str = "vlm_selected_node"):
+        """
+        Converts a VLM point primitive into an active ARCGraph node
+        using flood-fill (connected components) starting from the clicked pixel.
+        """
+        grid = self.graph_to_grid()
+        bg_color = self.image.background_color
+        
+        if not (0 <= r < self.height and 0 <= c < self.width):
+            raise ValueError(f"Point [{r}, {c}] is out of grid boundaries.")
+            
+        target_color = grid[r][c]
+        if target_color == bg_color:
+            raise ValueError(f"Selected point [{r}, {c}] lands on background canvas.")
+
+        # Classic Breadth-First Search (BFS) to capture the connected component
+        queue = deque([(r, c)])
+        visited = set([(r, c)])
+        node_pixels = []
+        
+        while queue:
+            curr_r, curr_c = queue.popleft()
+            node_pixels.append((curr_r, curr_c))
+            
+            # Check 4-connectivity or 8-connectivity depending on your preference
+            for dr, dc in [(-1,0), (1,0), (0,-1), (0,1)]:
+                nr, nc = curr_r + dr, curr_c + dc
+                if 0 <= nr < self.height and 0 <= nc < self.width:
+                    if (nr, nc) not in visited and grid[nr][nc] == target_color:
+                        visited.add((nr, nc))
+                        queue.append((nr, nc))
+
+        if self.graph.has_node(node_id):
+            self.graph.remove_node(node_id)
+
+        self.graph.add_node(
+            node_id, 
+            nodes=node_pixels, 
+            color=[target_color]*len(node_pixels) if self.is_multicolor else target_color, 
+            size=len(node_pixels)
+        )
+        return node_id
+
     # ------------------------------------- filters ------------------------------------------
     #  filters take the form of filter(node, params), return true if node satisfies filter
 
