@@ -363,7 +363,7 @@ def sample_and_apply(no_of_trans=1,
             else:
                 for _ in range(idx, no_of_trans):
                     transformation_details.append("no_trans")
-                return start_grids, grids, transformation_details
+                return start_grids, grids, transformation_details,all_trans_dict
             
         
 
