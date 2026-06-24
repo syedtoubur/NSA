@@ -40,9 +40,9 @@ def generate_samples(number_of_samples, output_folder, all_transformations_path,
                 print("Sample generation timed out. Moving to the next transformation.")
                 continue  # Skip to the next iteration
 
-            original_grids, transformed_grids, transformation_details = result
-            prepare_and_save_transformed_data(original_grids, transformed_grids, transformation_details, output_folder=output_folder)
-            append_transformation_to_file(all_transformations_path, original_grids, transformed_grids, transformation_details)
+            original_grids, transformed_grids, transformation_details,all_trans_dicts = result
+            prepare_and_save_transformed_data(original_grids, transformed_grids, all_trans_dicts, output_folder=output_folder)
+            append_transformation_to_file(all_transformations_path, original_grids, transformed_grids, all_trans_dicts)
             update_progress_bar(output_folder, pbar, number_of_samples)
             if pbar.n >= number_of_samples:
                 break
