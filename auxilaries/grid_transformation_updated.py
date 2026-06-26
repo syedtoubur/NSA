@@ -365,13 +365,14 @@ def sample_and_apply(no_of_trans=1,
                     transformation_details.append("no_trans")
                 return start_grids, grids, transformation_details,all_trans_dicts
             
-        
 
+
+
+        # Force a hard choice between Node-based and Grid-based tracking first
+        track_type = random.choice(["node_based", "grid_based"])
         changed = False
         no_of_skips = 0
-        while not changed:
-            if no_of_skips > 100:
-                break
+        while not changed and no_of_skips<100:
 
             # Randomize Abstraction
             abstraction = random.choice(Image.abstractions)
@@ -390,32 +391,21 @@ def sample_and_apply(no_of_trans=1,
             elif filter_op == "filter_by_neighbor_color":
                 filter_params = {"color": random.randint(0, 9), "exclude": random.choice([True, False])}
 
-            # Determine Transformation
-            if transformation_ops is None:
-                possible_trans_ops = ARCGraph.transformation_ops.get(abstraction, [])
-                possible_trans_ops += ["connect", "magnet", "mirror_grid", "upscale_grid",
-                                       "crop", "rotate_grid", "fill", "extract", "duplicate",
-                                       "beam", "recolor", "shift", "truncate",
-                                       "arbitrary_duplicate", "rotate_duplicate"]
+
+            if track_type == "grid_based":
+                # Only select from grid operations
+                possible_trans_ops = ["connect", "magnet", "mirror_grid", "upscale_grid",
+                                    "crop", "rotate_grid", "fill", "beam", "recolor", 
+                                    "shift", "truncate", "arbitrary_duplicate", "rotate_duplicate"]
+                transformation_op = random.choice(possible_trans_ops)
+            else:
+                # Only select from graph/node operations bound to this abstraction
+                possible_trans_ops = ARCGraph.transformation_ops.get(abstraction, []) + ["extract", "duplicate"]
                 if not possible_trans_ops:
-                    print(f"No transformation operations available for abstraction '{abstraction}'. Skipping.")
                     no_of_skips += 1
                     continue
                 transformation_op = random.choice(possible_trans_ops)
-            else:
-                if idx >= len(transformation_ops):
-                    possible_trans_ops = ARCGraph.transformation_ops.get(abstraction, [])
-                    possible_trans_ops += ["connect_grid", "magnet_grid", "mirror_grid", "upscale_grid",
-                                           "crop_grid", "rotate_grid", "fill_grid", "extract", "duplicate",
-                                           "beam_grid", "recolor_grid", "shift_grid", "truncate_grid",
-                                           "arbitrary_duplicate_grid", "rotate_duplicate_grid"]  # Include new transformations
-                    if not possible_trans_ops:
-                        print(f"No transformation operations available for abstraction '{abstraction}'. Skipping.")
-                        no_of_skips += 1
-                        continue
-                    transformation_op = random.choice(possible_trans_ops)
-                else:
-                    transformation_op = transformation_ops[idx % len(transformation_ops)]
+
 
             transformation_params = {}
             if transformation_op == "update_color":
@@ -645,28 +635,26 @@ def sample_and_apply(no_of_trans=1,
                 'transformation_params': transformation_params
             }
 
+        # Execute and verify
             new_grids = []
             changed_flags = []
             for grid in grids:
                 original_grid = [row[:] for row in grid]
                 transformed_grid = modify_grid(grid, trans_dict)
-                if len(np.unique(transformed_grid)) == 1:
-                    changed_flags.append(False)
-                else:
-                    changed_flags.append(not grid_equal(original_grid, transformed_grid))
+                changed_flags.append(not grid_equal(original_grid, transformed_grid))
                 new_grids.append(transformed_grid)
 
-            if are_grids_identical(new_grids):
-                changed = False
-            else:
-                changed = all(changed_flags)
-
-            if changed:
+            if not are_grids_identical(new_grids) and all(changed_flags):
+                changed = True
                 grids = new_grids
                 transformation_details.append(trans_dict["transformation"])
                 all_trans_dicts.append(trans_dict)
-                
-            no_of_skips += 1
+            else:
+                no_of_skips += 1
+                # CRITICAL: If node-based failed, do NOT switch to grid_based. 
+                # Stay on node_based and let the loop try a different filter/op combo.
+
+
 
     if changed:
         return start_grids, grids, transformation_details,all_trans_dicts
