@@ -369,7 +369,8 @@ def sample_and_apply(no_of_trans=1,
 
 
         # Force a hard choice between Node-based and Grid-based tracking first
-        track_type = random.choice(["node_based", "grid_based"])
+        #track_type = random.choice(["node_based", "grid_based"]
+        track_type="node_based" #Now for simplicity keeping only node based transformation
         changed = False
         no_of_skips = 0
         while not changed and no_of_skips<100:
